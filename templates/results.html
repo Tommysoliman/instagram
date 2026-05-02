@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h4 class="fw-bold mb-0">🎉 Results</h4>
+  <a href="/" class="btn btn-primary">Run Again</a>
+</div>
+
+{% if not results %}
+<div class="alert alert-warning">No results yet. <a href="/">Go generate some ideas.</a></div>
+{% endif %}
+
+<div class="row g-4">
+  {% for r in results %}
+  <div class="col-md-6">
+    <div class="card h-100">
+      {% if r.image_file %}
+      <img src="/image/{{ r.image_file }}" class="card-img-top" style="border-radius:16px 16px 0 0; object-fit:cover; max-height:300px;" alt="meme image">
+      {% endif %}
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <h6 class="fw-bold mb-0">{{ r.concept }}</h6>
+          {% if r.media_id %}
+          <span class="badge bg-success ms-auto">Posted ✓</span>
+          {% elif r.error %}
+          <span class="badge bg-danger ms-auto">Failed</span>
+          {% else %}
+          <span class="badge bg-secondary ms-auto">No credentials</span>
+          {% endif %}
+        </div>
+        <span class="badge badge-format rounded-pill mb-3">{{ r.format }}</span>
+
+        <p class="small fw-semibold mb-1">Caption</p>
+        <p class="small text-muted mb-3">{{ r.caption }}</p>
+
+        <p class="small fw-semibold mb-1">Hashtags</p>
+        <p class="small text-muted mb-3">{% for h in r.hashtags %}#{{ h }} {% endfor %}</p>
+
+        <p class="small fw-semibold mb-1">First Comment</p>
+        <p class="small text-muted mb-0">{{ r.first_comment }}</p>
+
+        {% if r.error %}
+        <div class="alert alert-danger small mt-3 mb-0">{{ r.error }}</div>
+        {% endif %}
+        {% if r.media_id %}
+        <p class="small text-muted mt-2 mb-0">Media ID: <code>{{ r.media_id }}</code></p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

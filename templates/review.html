@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h4 class="fw-bold mb-0">💡 Pick Your Ideas</h4>
+  <a href="/" class="btn btn-sm btn-outline-secondary">← Back</a>
+</div>
+
+<form action="/post" method="POST" onsubmit="showLoading('Writing captions + generating images + posting… ~2 min')">
+  <div class="row g-3 mb-4">
+    {% for i, idea in ideas %}
+    <div class="col-md-6">
+      <div class="card h-100 p-3">
+        <div class="d-flex align-items-start gap-2 mb-2">
+          <input class="form-check-input mt-1 flex-shrink-0" type="checkbox"
+                 name="selected" value="{{ i }}" id="idea{{ i }}" checked>
+          <label class="fw-semibold" for="idea{{ i }}">{{ idea.concept }}</label>
+        </div>
+        <span class="badge badge-format rounded-pill mb-2 d-inline-block w-auto">{{ idea.format }}</span>
+        <p class="text-muted small mb-2">{{ idea.why_it_works }}</p>
+        {% if idea.risk_flags %}
+        <div class="small text-warning">
+          ⚠️ {{ idea.risk_flags | join(', ') }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-outline-secondary btn-sm"
+            onclick="document.querySelectorAll('[name=selected]').forEach(c=>c.checked=true)">
+      Select All
+    </button>
+    <button type="button" class="btn btn-outline-secondary btn-sm"
+            onclick="document.querySelectorAll('[name=selected]').forEach(c=>c.checked=false)">
+      Clear
+    </button>
+    <button type="submit" class="btn btn-primary px-4 fw-semibold ms-auto">
+      ✅ Post Selected →
+    </button>
+  </div>
+</form>
+
+{% endblock %}

@@ -258,12 +258,12 @@ def _add_meme_text(img_path: str, text: str) -> None:
     img = Image.open(img_path).convert("RGBA")
     w, h = img.size
 
-    font_size = h // 4
+    # ~8% of height matches the reference image proportions
+    font_size = max(32, h // 12)
     font = _get_meme_font(font_size)
 
-    # Measure with a temp draw
     tmp_draw = ImageDraw.Draw(img)
-    max_text_w = int(w * 0.84)
+    max_text_w = int(w * 0.82)
 
     # Word-wrap
     words = text.split()
@@ -281,25 +281,23 @@ def _add_meme_text(img_path: str, text: str) -> None:
     if current:
         lines.append(current)
 
-    line_h = int(font_size * 1.15)
-    pad = font_size // 3
-    box_w = int(w * 0.92)
+    line_h = int(font_size * 1.3)
+    pad = int(font_size * 0.9)        # generous top/bottom padding like the reference
+    box_w = int(w * 0.88)
     box_h = len(lines) * line_h + pad * 2
     box_x = (w - box_w) // 2
-    box_y = h - box_h - h // 35
-    radius = font_size // 5
+    box_y = h - box_h - int(h * 0.03) # small gap from bottom edge
+    radius = 22
 
-    # Draw white rounded box on a transparent overlay, then composite
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     ov_draw = ImageDraw.Draw(overlay)
     ov_draw.rounded_rectangle(
         [box_x, box_y, box_x + box_w, box_y + box_h],
         radius=radius,
-        fill=(255, 255, 255, 245),
+        fill=(255, 255, 255, 248),
     )
     img = Image.alpha_composite(img, overlay)
 
-    # Draw black text on top
     draw = ImageDraw.Draw(img)
     y = box_y + pad
     for line in lines:

@@ -259,7 +259,7 @@ def _add_meme_text(img_path: str, text: str) -> None:
     w, h = img.size
     draw = ImageDraw.Draw(img)
 
-    font_size = max(40, h // 14)
+    font_size = h // 4
     font = _get_meme_font(font_size)
 
     margin = w // 20

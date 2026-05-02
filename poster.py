@@ -25,11 +25,10 @@ def login(username: str, password: str) -> Client:
 
     session_b64 = os.environ.get("INSTAGRAM_SESSION")
     if session_b64:
-        # Railway: restore trusted session — do NOT call login() again,
-        # it triggers ChallengeRequired from an unfamiliar IP.
+        # Railway: restore session only — no login() or feed calls.
+        # Any API call from an unknown IP triggers ChallengeRequired.
         session = json.loads(base64.b64decode(session_b64))
         cl.set_settings(session)
-        cl.get_timeline_feed()  # lightweight call to verify session is alive
         return cl
 
     # Local: use session file

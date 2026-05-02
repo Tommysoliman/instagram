@@ -117,8 +117,14 @@ def post():
         })
 
     if cfg.instagram_username and cfg.instagram_password:
-        if _ig_client is None:
-            _ig_client = ig_login(cfg.instagram_username, cfg.instagram_password)
+        try:
+            if _ig_client is None:
+                _ig_client = ig_login(cfg.instagram_username, cfg.instagram_password)
+        except Exception as e:
+            for r in results:
+                r["error"] = f"Instagram login failed: {e}"
+            _save_state({"status": "done", "results": results})
+            return redirect(url_for("results"))
 
         for r in results:
             if not r["image_path"]:

@@ -249,7 +249,7 @@ def _get_meme_font(size: int):
 
 
 def _add_meme_text(img_path: str, text: str) -> None:
-    """Burn white meme text with black stroke onto the bottom of the image."""
+    """Overlay meme text on a white rounded-rectangle box at the bottom."""
     try:
         from PIL import Image, ImageDraw
     except ImportError:
@@ -257,13 +257,13 @@ def _add_meme_text(img_path: str, text: str) -> None:
 
     img = Image.open(img_path).convert("RGBA")
     w, h = img.size
-    draw = ImageDraw.Draw(img)
 
     font_size = h // 4
     font = _get_meme_font(font_size)
 
-    margin = w // 20
-    max_w = w - 2 * margin
+    # Measure with a temp draw
+    tmp_draw = ImageDraw.Draw(img)
+    max_text_w = int(w * 0.84)
 
     # Word-wrap
     words = text.split()
@@ -271,8 +271,8 @@ def _add_meme_text(img_path: str, text: str) -> None:
     current = ""
     for word in words:
         test = f"{current} {word}".strip()
-        bbox = draw.textbbox((0, 0), test, font=font)
-        if bbox[2] - bbox[0] <= max_w:
+        bbox = tmp_draw.textbbox((0, 0), test, font=font)
+        if bbox[2] - bbox[0] <= max_text_w:
             current = test
         else:
             if current:
@@ -281,15 +281,31 @@ def _add_meme_text(img_path: str, text: str) -> None:
     if current:
         lines.append(current)
 
-    line_h = font_size + 10
-    total_h = len(lines) * line_h
-    y = h - total_h - h // 25
-    stroke = max(2, font_size // 14)
+    line_h = int(font_size * 1.15)
+    pad = font_size // 3
+    box_w = int(w * 0.92)
+    box_h = len(lines) * line_h + pad * 2
+    box_x = (w - box_w) // 2
+    box_y = h - box_h - h // 35
+    radius = font_size // 5
 
+    # Draw white rounded box on a transparent overlay, then composite
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ov_draw = ImageDraw.Draw(overlay)
+    ov_draw.rounded_rectangle(
+        [box_x, box_y, box_x + box_w, box_y + box_h],
+        radius=radius,
+        fill=(255, 255, 255, 245),
+    )
+    img = Image.alpha_composite(img, overlay)
+
+    # Draw black text on top
+    draw = ImageDraw.Draw(img)
+    y = box_y + pad
     for line in lines:
         bbox = draw.textbbox((0, 0), line, font=font)
         x = (w - (bbox[2] - bbox[0])) // 2
-        draw.text((x, y), line, font=font, fill="white", stroke_width=stroke, stroke_fill="black")
+        draw.text((x, y), line, font=font, fill=(0, 0, 0, 255))
         y += line_h
 
     img.convert("RGB").save(img_path, "PNG")

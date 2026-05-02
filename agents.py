@@ -229,13 +229,80 @@ Why it works: {idea.why_it_works}"""
     )
 
 
+def _get_meme_font(size: int):
+    from PIL import ImageFont
+    candidates = [
+        "C:/Windows/Fonts/impact.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        "/Library/Fonts/Impact.ttf",
+    ]
+    for path in candidates:
+        try:
+            return ImageFont.truetype(path, size)
+        except (IOError, OSError):
+            continue
+    return ImageFont.load_default()
+
+
+def _add_meme_text(img_path: str, text: str) -> None:
+    """Burn white meme text with black stroke onto the bottom of the image."""
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return
+
+    img = Image.open(img_path).convert("RGBA")
+    w, h = img.size
+    draw = ImageDraw.Draw(img)
+
+    font_size = max(40, h // 14)
+    font = _get_meme_font(font_size)
+
+    margin = w // 20
+    max_w = w - 2 * margin
+
+    # Word-wrap
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        test = f"{current} {word}".strip()
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] - bbox[0] <= max_w:
+            current = test
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+
+    line_h = font_size + 10
+    total_h = len(lines) * line_h
+    y = h - total_h - h // 25
+    stroke = max(2, font_size // 14)
+
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font)
+        x = (w - (bbox[2] - bbox[0])) // 2
+        draw.text((x, y), line, font=font, fill="white", stroke_width=stroke, stroke_fill="black")
+        y += line_h
+
+    img.convert("RGB").save(img_path, "PNG")
+
+
 # ============================================================================
 # Agent 4: Image Generator (DALL-E 3)
 # ============================================================================
-def image_generator(cfg: Config, idea: MemeIdea) -> str:
+def image_generator(cfg: Config, idea: MemeIdea, caption: str = "") -> str:
     """
     Writes a DALL-E prompt for the meme concept, generates the image,
-    downloads it, and returns the local file path.
+    downloads it, optionally burns the caption onto the bottom, and returns
+    the local file path.
     """
     client = OpenAI(api_key=cfg.openai_api_key)
 
@@ -277,5 +344,9 @@ Rules:
     img_path = img_dir / f"{uuid.uuid4()}.png"
     img_data = _requests.get(image_url, timeout=30).content
     img_path.write_bytes(img_data)
+
+    # Step 4: Burn caption text onto the bottom of the image
+    if caption:
+        _add_meme_text(str(img_path), caption)
 
     return str(img_path)

@@ -98,7 +98,7 @@ def post():
     for idea in approved:
         cap = caption_writer(cfg, idea)
         try:
-            img_path = image_generator(cfg, idea)
+            img_path = image_generator(cfg, idea, caption=cap.caption)
             img_file = Path(img_path).name
         except Exception as e:
             img_path = ""

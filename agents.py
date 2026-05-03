@@ -259,7 +259,7 @@ def _add_meme_text(img_path: str, text: str) -> None:
     w, h = img.size
 
     # ~8% of height matches the reference image proportions
-    font_size = max(32, h // 12)
+    font_size = max(32, (h // 12) * 3)
     font = _get_meme_font(font_size)
 
     tmp_draw = ImageDraw.Draw(img)

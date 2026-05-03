@@ -266,6 +266,15 @@ def _wrap_text(draw, text: str, font, max_w: int) -> list[str]:
     return lines
 
 
+def _strip_emoji(text: str) -> str:
+    import re
+    # Remove emoji / pictograph unicode ranges that fonts cannot render
+    return re.sub(
+        u"[🀀-🫿☀-➿︀-﻿]",
+        "", text,
+    ).strip()
+
+
 def _add_meme_text(img_path: str, text: str) -> None:
     """Overlay meme text inside a white rounded-rectangle box fixed at 20% of image height."""
     try:
@@ -273,6 +282,7 @@ def _add_meme_text(img_path: str, text: str) -> None:
     except ImportError:
         return
 
+    text = _strip_emoji(text)
     img = Image.open(img_path).convert("RGBA")
     w, h = img.size
 

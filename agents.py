@@ -248,8 +248,26 @@ def _get_meme_font(size: int):
     return ImageFont.load_default()
 
 
+def _wrap_text(draw, text: str, font, max_w: int) -> list[str]:
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        test = f"{current} {word}".strip()
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] - bbox[0] <= max_w:
+            current = test
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines
+
+
 def _add_meme_text(img_path: str, text: str) -> None:
-    """Overlay meme text on a white rounded-rectangle box at the bottom."""
+    """Overlay meme text inside a white rounded-rectangle box fixed at 20% of image height."""
     try:
         from PIL import Image, ImageDraw
     except ImportError:
@@ -258,37 +276,33 @@ def _add_meme_text(img_path: str, text: str) -> None:
     img = Image.open(img_path).convert("RGBA")
     w, h = img.size
 
-    # ~8% of height matches the reference image proportions
-    font_size = max(32, (h // 12) * 3)
-    font = _get_meme_font(font_size)
-
-    tmp_draw = ImageDraw.Draw(img)
-    max_text_w = int(w * 0.82)
-
-    # Word-wrap
-    words = text.split()
-    lines: list[str] = []
-    current = ""
-    for word in words:
-        test = f"{current} {word}".strip()
-        bbox = tmp_draw.textbbox((0, 0), test, font=font)
-        if bbox[2] - bbox[0] <= max_text_w:
-            current = test
-        else:
-            if current:
-                lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-
-    line_h = int(font_size * 1.3)
-    pad = int(font_size * 0.9)        # generous top/bottom padding like the reference
     box_w = int(w * 0.88)
-    box_h = len(lines) * line_h + pad * 2
+    box_h = int(h * 0.20)              # fixed 20% of image height
     box_x = (w - box_w) // 2
-    box_y = h - box_h - int(h * 0.03) # small gap from bottom edge
+    box_y = h - box_h - int(h * 0.02)
     radius = 22
+    pad = int(box_h * 0.12)            # 12% of box as top/bottom padding
+    max_text_w = box_w - int(w * 0.08)
+    available_h = box_h - pad * 2
 
+    # Binary-search for the largest font that fits inside the box
+    tmp_draw = ImageDraw.Draw(img)
+    lo, hi = 12, box_h
+    best_font, best_lines = _get_meme_font(lo), [text]
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        font = _get_meme_font(mid)
+        lines = _wrap_text(tmp_draw, text, font, max_text_w)
+        line_h = int(mid * 1.25)
+        if len(lines) * line_h <= available_h:
+            best_font, best_lines = font, lines
+            lo = mid + 1
+        else:
+            hi = mid - 1
+
+    line_h = int(((hi + 1) // 1) * 1.25)
+
+    # Draw white rounded box
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     ov_draw = ImageDraw.Draw(overlay)
     ov_draw.rounded_rectangle(
@@ -298,13 +312,18 @@ def _add_meme_text(img_path: str, text: str) -> None:
     )
     img = Image.alpha_composite(img, overlay)
 
+    # Center text block vertically inside the box
     draw = ImageDraw.Draw(img)
-    y = box_y + pad
-    for line in lines:
-        bbox = draw.textbbox((0, 0), line, font=font)
+    font_size_used = (lo - 1)
+    lh = int(font_size_used * 1.25)
+    total_text_h = len(best_lines) * lh
+    y = box_y + (box_h - total_text_h) // 2
+
+    for line in best_lines:
+        bbox = draw.textbbox((0, 0), line, font=best_font)
         x = (w - (bbox[2] - bbox[0])) // 2
-        draw.text((x, y), line, font=font, fill=(0, 0, 0, 255))
-        y += line_h
+        draw.text((x, y), line, font=best_font, fill=(0, 0, 0, 255))
+        y += lh
 
     img.convert("RGB").save(img_path, "PNG")
 

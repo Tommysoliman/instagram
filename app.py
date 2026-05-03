@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+from instagrapi.exceptions import ChallengeRequired, LoginRequired
 
 from config import load_config
 from memory import MemeMemory
@@ -120,7 +121,17 @@ def post():
         try:
             if _ig_client is None:
                 _ig_client = ig_login(cfg.instagram_username, cfg.instagram_password)
+        except (ChallengeRequired, LoginRequired):
+            _ig_client = None
+            msg = ("Instagram security challenge triggered. "
+                   "Open Instagram on your phone, approve 'Yes, it was me', "
+                   "then re-run save_session.py and update INSTAGRAM_SESSION in Railway.")
+            for r in results:
+                r["error"] = msg
+            _save_state({"status": "done", "results": results})
+            return redirect(url_for("results"))
         except Exception as e:
+            _ig_client = None
             for r in results:
                 r["error"] = f"Instagram login failed: {e}"
             _save_state({"status": "done", "results": results})
@@ -134,6 +145,11 @@ def post():
                 full_caption = r["caption"] + "\n\n" + " ".join(f"#{h}" for h in r["hashtags"])
                 media_id = post_photo(_ig_client, r["image_path"], full_caption, r["first_comment"])
                 r["media_id"] = media_id
+            except (ChallengeRequired, LoginRequired):
+                _ig_client = None
+                r["error"] = ("Instagram security challenge triggered. "
+                              "Approve 'Yes, it was me' on your phone, "
+                              "re-run save_session.py and update INSTAGRAM_SESSION in Railway.")
             except Exception as e:
                 r["error"] = str(e)
 
